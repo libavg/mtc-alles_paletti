@@ -1,0 +1,7 @@
+<div>
+    <image href="images/background.jpg"/>
+    <image id="canvas" href="images/paint.png"/>
+    <words id="time" alignment="center" size="720" color="000000"  sensitive="false"/>
+    <words id="win" alignment="center" size="600" color="000000"
+sensitive="false" opacity="0" text="WIN"/>
+</div>
