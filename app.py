@@ -27,12 +27,12 @@ from libavg.AVGAppUtil import getMediaDir
 g_Player = avg.Player.get()
 
 class App(AVGApp):
-    def __init__(self, parentNode):
+    def init(self):
         print "alles paletti init"
         canvasXML = open(os.path.join(getMediaDir(__file__), "canvas.avg"))
         self.__mainNode = g_Player.createNode(canvasXML.read())
         self.__mainNode.mediadir = getMediaDir(__file__)
-        parentNode.appendChild(self.__mainNode)
+        self._parentNode.appendChild(self.__mainNode)
 
         g_Player.getElementByID("time").parawidth = int(config.resolution.x)
         g_Player.getElementByID("win").parawidth = int(config.resolution.x)
@@ -50,13 +50,13 @@ avg.TOUCH, self.forgetColor)
         self.reset()
 
     def winFade(self):
-        anim.fadeOut(g_Player.getElementByID("win"), config.fadeOutTime, onStop=self.reset)
+        anim.fadeOut(g_Player.getElementByID("win"), config.fadeOutTime, onStop=self.reset).start()
 
     def reset(self):
         global tehTime
         tehTime = config.roundDuration
         g_Player.getElementByID("time").text = str(tehTime)
-        anim.fadeIn(g_Player.getElementByID("time"), config.fadeInTime, 0.5)
+        anim.fadeIn(g_Player.getElementByID("time"), config.fadeInTime, 0.5).start()
 
         global tehImage
         # tehImage = Bitmap(g_Player.getElementByID("canvas").href)
@@ -66,7 +66,7 @@ avg.TOUCH, self.forgetColor)
         im = Image.fromstring ('RGBA',
 (int(config.resolution.x),(int(config.resolution.y))),
 tehImage.getPixels())
-        anim.fadeIn(g_Player.getElementByID("canvas"), config.fadeInTime, 1.0)
+        anim.fadeIn(g_Player.getElementByID("canvas"), config.fadeInTime, 1.0).start()
 
         global dirty
         dirty = True
@@ -144,8 +144,8 @@ tehImage.getPixels())
         colors = {}
         paintedCanvas = im.load()
 
-        anim.fadeOut(g_Player.getElementByID("canvas"), config.fadeOutTime)
-        anim.fadeOut(g_Player.getElementByID("time"), config.fadeOutTime)
+        anim.fadeOut(g_Player.getElementByID("canvas"), config.fadeOutTime).start()
+        anim.fadeOut(g_Player.getElementByID("time"), config.fadeOutTime).start()
 
         for x in range(0,int(config.resolution.x)):
             for y in range(0,int(config.resolution.y)):
@@ -163,7 +163,7 @@ tehImage.getPixels())
         win = g_Player.getElementByID("win")
         win.color = wincolor
         #anim.fadeIn(win, config.fadeInTime, 1.0, onStop=self.winFade)
-        anim.fadeIn(win, config.fadeInTime, 1.0)
+        anim.fadeIn(win, config.fadeInTime, 1.0).start()
         g_Player.setTimeout(config.fadeInTime + config.fadeOutTime, self.leave)
 
 
