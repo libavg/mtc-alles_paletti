@@ -34,8 +34,10 @@ class App(AVGApp):
         self.__mainNode.mediadir = getMediaDir(__file__)
         self._parentNode.appendChild(self.__mainNode)
 
-        g_Player.getElementByID("time").parawidth = int(config.resolution.x)
-        g_Player.getElementByID("win").parawidth = int(config.resolution.x)
+        for nodeID in "time", "win":
+            node = g_Player.getElementByID(nodeID)
+            node.width = self._parentNode.size.x
+            node.x = self._parentNode.size.x/2
 
         g_Player.getElementByID("canvas").setEventHandler(avg.CURSORDOWN, 
 avg.TOUCH, self.getColor)
