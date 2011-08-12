@@ -22,7 +22,7 @@ import config
 import os
 
 from PIL import Image, ImageDraw
-from libavg.AVGAppUtil import getMediaDir
+from libavg.utils import getMediaDir
 
 g_Player = avg.Player.get()
 
