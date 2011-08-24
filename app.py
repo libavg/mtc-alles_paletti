@@ -20,15 +20,24 @@ from libavg import avg, Point2D, Bitmap, anim, AVGApp
 from libavg import AVGMTAppStarter
 import config
 import os
-
 from PIL import Image, ImageDraw
 from libavg.utils import getMediaDir
 
 g_Player = avg.Player.get()
 
 class App(AVGApp):
+    dirty = True
+    endgame = False
+    im = None
+    oldCoord = None
+    tehBrushes = None
+    tehImage = None
+    tehTime = None
+
+    __onFrameHandler = None
+    __clockInterval = None
+
     def init(self):
-        print "alles paletti init"
         canvasXML = open(os.path.join(getMediaDir(__file__), "canvas.avg"))
         self.__mainNode = g_Player.createNode(canvasXML.read())
         self.__mainNode.mediadir = getMediaDir(__file__)
@@ -39,120 +48,112 @@ class App(AVGApp):
             node.width = self._parentNode.size.x
             node.x = self._parentNode.size.x/2
 
-        g_Player.getElementByID("canvas").setEventHandler(avg.CURSORDOWN, 
-avg.TOUCH, self.getColor)
-        g_Player.getElementByID("canvas").setEventHandler(avg.CURSORMOTION,
-avg.TOUCH, self.paint)
-        g_Player.getElementByID("canvas").setEventHandler(avg.CURSORUP,
-avg.TOUCH, self.forgetColor)
+        g_Player.getElementByID("canvas").setEventHandler(avg.CURSORDOWN, avg.TOUCH, self.getColor) 
+        g_Player.getElementByID("canvas").setEventHandler(avg.CURSORMOTION, avg.TOUCH, self.paint)
+        g_Player.getElementByID("canvas").setEventHandler(avg.CURSORUP, avg.TOUCH, self.forgetColor)
 
 
-        global tehBrushes, oldCoord
-        tehBrushes, oldCoord = {}, {}
-        self.reset()
+        self.tehBrushes, self.oldCoord = {}, {}
+        self.tehTime = config.roundDuration
+        self.tehImage = Bitmap(os.path.join(getMediaDir(__file__), "images/paint.png"))
+        self.im = Image.fromstring ('RGBA',
+            (int(config.resolution.x),(int(config.resolution.y))),
+            self.tehImage.getPixels())
 
     def winFade(self):
         anim.fadeOut(g_Player.getElementByID("win"), config.fadeOutTime, onStop=self.reset).start()
 
     def reset(self):
-        global tehTime
-        tehTime = config.roundDuration
-        g_Player.getElementByID("time").text = str(tehTime)
+        g_Player.getElementByID("time").text = str(self.tehTime)
         anim.fadeIn(g_Player.getElementByID("time"), config.fadeInTime, 0.5).start()
 
-        global tehImage
-        # tehImage = Bitmap(g_Player.getElementByID("canvas").href)
-        tehImage = Bitmap(os.path.join(getMediaDir(__file__), "images/paint.png"))
+        # self.tehImage = Bitmap(g_Player.getElementByID("canvas").href)
+        self.tehImage = Bitmap(os.path.join(getMediaDir(__file__), "images/paint.png"))
 
-        global im
-        im = Image.fromstring ('RGBA',
-(int(config.resolution.x),(int(config.resolution.y))),
-tehImage.getPixels())
+        # the format of tehImage is BGRA not RGBA. we need to take care of that while we analyse the image !
         anim.fadeIn(g_Player.getElementByID("canvas"), config.fadeInTime, 1.0).start()
 
-        global dirty
-        dirty = True
+        self.dirty = True
+        self.endgame = False
 
-        global endgame
-        endgame = False
+        # set timers
+        if not self.__onFrameHandler:
+            self.__onFrameHandler = g_Player.setOnFrameHandler(self.updateImage)
+        if not self.__clockInterval:
+            self.__clockInterval = g_Player.setInterval(1000, self.checkTime)
 
     def _enter(self):
-        self.__onFrameHandler = g_Player.setOnFrameHandler(self.updateImage)
-        self.__clockInterval = g_Player.setInterval(1000, self.checkTime)
+        g_Player.getElementByID("time").text = '!'
         self.winFade()
 
     def _leave(self):
-        g_Player.clearInterval(self.__onFrameHandler)
-        g_Player.clearInterval(self.__clockInterval)
+        if self.__onFrameHandler:
+            g_Player.clearInterval(self.__onFrameHandler)
+            self.__onFrameHandler = None
+        if self.__clockInterval:
+            g_Player.clearInterval(self.__clockInterval)
+            self.__clockInterval = None
 
     def updateImage(self):
-        if dirty:
-            tehImage.setPixels(im.tostring())
-            g_Player.getElementByID("canvas").setBitmap(tehImage)
-            global dirty
-            dirty = False
+        if self.dirty:
+            self.tehImage.setPixels(self.im.tostring())
+            g_Player.getElementByID("canvas").setBitmap(self.tehImage)
+            self.dirty = False
 
     def getColor(self, event):
         x,y = event.pos.x, event.pos.y
 
-        r, g, b, a = im.getpixel((x,y))
-        tehBrushes[event.cursorid] = [r,g,b,a]
+        r, g, b, a = self.im.getpixel((x,y))
+        self.tehBrushes[event.cursorid] = [r,g,b,a]
 
-        global oldCoord
-        oldCoord[event.cursorid] = [x,y]
+        self.oldCoord[event.cursorid] = [x,y]
   
     def paint(self, event):
         pos = (event.pos.x, event.pos.y)
         try:
-            r, g, b, a = tehBrushes[event.cursorid]
+            r, g, b, a = self.tehBrushes[event.cursorid]
         except KeyError: # ignore foreign cursors
             return
 
         if a:
-            draw = ImageDraw.Draw(im)
+            draw = ImageDraw.Draw(self.im)
             w = config.brushSize
             rad = w / 2
             x,y = event.pos.x, event.pos.y
-            oldx, oldy = oldCoord[event.cursorid]
+            oldx, oldy = self.oldCoord[event.cursorid]
             draw.ellipse((x-rad,y-rad) + (x+rad, y+rad), fill=(r,g,b,a))
             draw.line((x,y) + (oldx, oldy), fill=(r,g,b,a), width=w)
             del draw
 
-            global oldCoord
-            oldCoord[event.cursorid] = [x,y]
-
-            global dirty
-            dirty = True
+            self.oldCoord[event.cursorid] = [x,y]
+            self.dirty = True
 
     def forgetColor(self, event):
-        if event.cursorid in tehBrushes:
-            del tehBrushes[event.cursorid]
-            del oldCoord[event.cursorid]
+        if event.cursorid in self.tehBrushes:
+            del self.tehBrushes[event.cursorid]
+            del self.oldCoord[event.cursorid]
 
     def checkTime(self):
-        if (endgame == False):
-            global tehTime
+        if (self.endgame == False):
+            if self.tehTime >= 0:
+                g_Player.getElementByID("time").text = str(self.tehTime)
 
-            g_Player.getElementByID("time").text = str(tehTime)
-            tehTime = tehTime - 1
-
-            if (tehTime == -2):
+            if (self.tehTime == -2):
                 self.endGame()
+        self.tehTime = self.tehTime - 1
 
     def endGame(self):
-        global endgame
-        endgame == True
+        self.endgame == True
         colors = {}
-        paintedCanvas = im.load()
+        paintedCanvas = self.im.load()
         anim.fadeOut(g_Player.getElementByID("canvas"), config.fadeOutTime).start()
         anim.fadeOut(g_Player.getElementByID("time"), config.fadeOutTime).start()
 
         for x in range(0,int(config.resolution.x)):
             for y in range(0,int(config.resolution.y)):
-                r,g,b,a = tehImage.getPixel((x,y))
-                colorname = "%02x%02x%02x" % (r,g,b)
-        #        print "%d,%d %s" % (x, y, colorname)
+                r,g,b,a = self.tehImage.getPixel((x,y))
                 if a != 0:
+                    colorname = "%02x%02x%02x" % (r,g,b)
                     if not(colors.has_key(colorname)):
                         colors[colorname] = 0
                     colors[colorname] = colors[colorname] + 1
