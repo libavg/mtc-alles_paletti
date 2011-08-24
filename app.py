@@ -142,23 +142,20 @@ tehImage.getPixels())
     def endGame(self):
         global endgame
         endgame == True
-
         colors = {}
         paintedCanvas = im.load()
-
         anim.fadeOut(g_Player.getElementByID("canvas"), config.fadeOutTime).start()
         anim.fadeOut(g_Player.getElementByID("time"), config.fadeOutTime).start()
 
         for x in range(0,int(config.resolution.x)):
             for y in range(0,int(config.resolution.y)):
-                r,g,b,a = paintedCanvas[x,y]
+                r,g,b,a = tehImage.getPixel((x,y))
                 colorname = "%02x%02x%02x" % (r,g,b)
-
-                if not(colors.has_key(colorname)):
-                    colors[colorname] = 0
-
-                colors[colorname] = colors[colorname] + 1
-
+        #        print "%d,%d %s" % (x, y, colorname)
+                if a != 0:
+                    if not(colors.has_key(colorname)):
+                        colors[colorname] = 0
+                    colors[colorname] = colors[colorname] + 1
         colors["ffffff"] = 0
         wincolor = max(colors.iterkeys(), key=lambda k: colors[k]) # interesting way to sort dictionaries by values
 
